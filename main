@@ -4,46 +4,46 @@ from fuzzywuzzy import fuzz
 import time
 import csv
 
-with open("mel.csv","w",encoding="utf-8") as cikti:
-    with open("emlak93.csv","r",encoding="Windows-1254") as listem:
+with open("mel.csv","w",encoding="utf-8") as cikti: #creates csv for output
+    with open("emlak93.csv","r",encoding="Windows-1254") as listem: # open csv includes names of places
         okunan = csv.reader(listem, delimiter=";")
         browser = webdriver.Chrome("C:\sel\chromedriver.exe")
         browser.get("https://www.google.com/maps")
         for a in okunan:
             schoolId = a[0]
             schoolName = a[1]
-            schoolLoc = a[2]
+            schoolLoc = a[2]   #optional -if location data exists-
             schoolName2=schoolName+" "+schoolLoc.split("/")[0]
             time.sleep(1)
             browser.find_element_by_class_name("tactile-searchbox-input").send_keys(schoolName2)
-            browser.find_element_by_id("searchbox-searchbutton").click() #okul ismi araması yapıldı
+            browser.find_element_by_id("searchbox-searchbutton").click() #searchs name of the places
             time.sleep(4)
             try:
                 icerik = BeautifulSoup(browser.page_source, 'html.parser')
                 other = [sonuc.text for sonuc in icerik.findAll("h3", class_="section-result-title")]
-                sonucSayisi = len(other)  # arama sonucunda dönen sonuçların sayısı
+                sonucSayisi = len(other)  # results number after search
 
-                if sonucSayisi == 0:  # eğer çoklu sonuç gelmediyse isim kontrolü yapılır
+                if sonucSayisi == 0:  # if there is one result gets the title 
                     tekliSonucBaslik = icerik.find("h1", class_="section-hero-header-title").text
                     adres = browser.find_element_by_class_name("section-info-text").text
                     adres2 = adres.split(" ")[-1]
 
-                    if fuzz.token_set_ratio(tekliSonucBaslik.title(), schoolName) > 80 and fuzz.ratio(adres2, schoolLoc) > 80:
+                    if fuzz.token_set_ratio(tekliSonucBaslik.title(), schoolName) > 80 and fuzz.ratio(adres2, schoolLoc) > 80: #checks title and given name similarity
                         url = browser.current_url
                         url2 = url[-23:-1] + url[-1]
                         url3 = url2.replace("!4d", ",")
                         print(schoolName + "/" + tekliSonucBaslik + "---" + url3 + "/ " + adres2+"::"+ schoolLoc )
                         cikti.write(
                             schoolId + "[" + schoolName +"["+ schoolLoc+ "[" + tekliSonucBaslik + "[" +adres2 +"[" + url3 + "[" + "\n")
-                    else:
+                    else: # if there is no similarity
                         print(schoolName + " için googledan gelen tek sonuç istenen sonuç değildir")
 
-                else:  # eğer çoklu sonuç geldiyse tüm sonuçlar için isim kontrolü yapılır
-                    k = -1  # hangi elemente tıklanacağının sırasını tutmak için
+                else:  # if there are multiple results controls all results 
+                    k = -1  # to keep the rank of elements
                     for cokluSonuclar in other:
                         k = k + 1
                         if fuzz.token_set_ratio(cokluSonuclar.title(), schoolName) > 88:
-                            b = browser.find_elements_by_class_name("section-result-content")  # sonucun üzerine tıklamak için gerekli element doğru sırayla çekilir
+                            b = browser.find_elements_by_class_name("section-result-content")  # gets needed element
                             b[k].click()
                             time.sleep(2)
                             adres = browser.find_element_by_class_name("section-info-text").text
